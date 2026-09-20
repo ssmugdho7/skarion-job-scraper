@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Compile Python files
+        run: python -m py_compile app.py models.py scraper.py scheduler.py
+      - name: Smoke test Flask app
+        run: |
+          python - <<'PY'
+          from app import app
+          client = app.test_client()
+          health = client.get('/health')
+          assert health.status_code == 200, health.data
+          candidates = client.get('/api/candidates')
+          assert candidates.status_code == 200, candidates.data
+          assert isinstance(candidates.get_json(), list)
+          print('smoke ok')
+          PY

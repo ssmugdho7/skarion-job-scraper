@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USA Job Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white shadow-md flex flex-col">
+            <div class="p-4 border-b">
+                <h1 class="text-2xl font-bold text-blue-600">USA Job Portal</h1>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1">
+                <h2 class="text-sm font-semibold text-gray-500 uppercase mb-3">Candidates</h2>
+                <ul id="candidate-list" class="space-y-2">
+                    <!-- Candidates injected here -->
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col h-screen overflow-hidden">
+            <!-- Header Filters -->
+            <header class="bg-white shadow-sm p-4 flex items-center justify-between z-10">
+                <h2 id="current-candidate-name" class="text-xl font-bold text-gray-800">Select a Candidate</h2>
+                <div class="flex space-x-4">
+                    <select id="sort-by" class="border rounded px-3 py-1 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="score_desc">Match Score (High to Low)</option>
+                        <option value="score_asc">Match Score (Low to High)</option>
+                        <option value="date_desc">Date (Newest First)</option>
+                        <option value="date_asc">Date (Oldest First)</option>
+                    </select>
+                    <select id="filter-status" class="border rounded px-3 py-1 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">All Statuses</option>
+                        <option value="New">New</option>
+                        <option value="Applied">Applied</option>
+                        <option value="Dismissed">Dismissed</option>
+                    </select>
+                    <select id="filter-date" class="border rounded px-3 py-1 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Any Time</option>
+                        <option value="1">Past 24 hours</option>
+                        <option value="3">Past 3 days</option>
+                        <option value="7">Past week</option>
+                    </select>
+                    <input type="text" id="filter-state" placeholder="Filter by State (e.g. TX)" class="border rounded px-3 py-1 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 w-32">
+                </div>
+            </header>
+
+            <!-- Job List -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <div id="job-list" class="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
+                    <!-- Jobs injected here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:5000/api';
+        let currentCandidateId = null;
+
+        // Initialize
+        async function init() {
+            await loadCandidates();
+            setupFilters();
+        }
+
+        async function loadCandidates() {
+            const res = await fetch(`${API_URL}/candidates`);
+            const candidates = await res.json();
+            const list = document.getElementById('candidate-list');
+            list.innerHTML = '';
+            
+            candidates.forEach(c => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <button onclick="selectCandidate(${c.id}, '${c.name.replace(/'/g, "\\'")}')" 
+                            class="w-full text-left px-3 py-2 rounded transition-colors hover:bg-blue-50 focus:bg-blue-100 candidate-btn"
+                            id="btn-candidate-${c.id}">
+                        <div class="font-medium text-gray-800 truncate">${c.name}</div>
+                    </button>
+                `;
+                list.appendChild(li);
+            });
+
+            if (candidates.length > 0) {
+                selectCandidate(candidates[0].id, candidates[0].name);
+            }
+        }
+
+        async function selectCandidate(id, name) {
+            currentCandidateId = id;
+            document.getElementById('current-candidate-name').textContent = `Jobs for ${name}`;
+            
+            document.querySelectorAll('.candidate-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-100', 'border-l-4', 'border-blue-500');
+            });
+            const activeBtn = document.getElementById(`btn-candidate-${id}`);
+            if (activeBtn) activeBtn.classList.add('bg-blue-100', 'border-l-4', 'border-blue-500');
+
+            loadJobs();
+        }
+
+        function setupFilters() {
+            document.getElementById('sort-by').addEventListener('change', loadJobs);
+            document.getElementById('filter-status').addEventListener('change', loadJobs);
+            document.getElementById('filter-date').addEventListener('change', loadJobs);
+            document.getElementById('filter-state').addEventListener('input', debounce(loadJobs, 300));
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        async function loadJobs() {
+            if (!currentCandidateId) return;
+
+            const sortBy = document.getElementById('sort-by').value;
+            const status = document.getElementById('filter-status').value;
+            const date = document.getElementById('filter-date').value;
+            const state = document.getElementById('filter-state').value;
+
+            let url = `${API_URL}/jobs?candidate_id=${currentCandidateId}&sort=${sortBy}`;
+            if (status) url += `&status=${status}`;
+            if (date) url += `&date=${date}`;
+            if (state) url += `&state=${state}`;
+
+            const res = await fetch(url);
+            const jobs = await res.json();
+            
+            renderJobs(jobs);
+        }
+
+        function renderJobs(jobs) {
+            const container = document.getElementById('job-list');
+            container.innerHTML = '';
+
+            if (jobs.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center text-gray-500 py-10">No jobs found for the current filters.</div>`;
+                return;
+            }
+
+            jobs.forEach(job => {
+                let badgeHtml = '';
+                if (job.is_us_citizen_required) {
+                    badgeHtml = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 mb-2 mr-2">
+                        <i class="fa-solid fa-flag-usa mr-1"></i> US Citizen
+                    </span>`;
+                }
+
+                let statusBadge = '';
+                if (job.status === 'New') statusBadge = 'bg-green-100 text-green-800';
+                else if (job.status === 'Applied') statusBadge = 'bg-purple-100 text-purple-800';
+                else if (job.status === 'Dismissed') statusBadge = 'bg-gray-100 text-gray-800';
+
+                const colors = {
+                    'LinkedIn': 'bg-blue-700',
+                    'Indeed': 'bg-blue-500',
+                    'ZipRecruiter': 'bg-green-600',
+                    'Glassdoor': 'bg-green-500',
+                    'SimplyHired': 'bg-blue-800',
+                    'CareerBuilder': 'bg-indigo-600',
+                    'Monster': 'bg-purple-600',
+                    'Dice': 'bg-red-600',
+                    'FlexJobs': 'bg-teal-500',
+                    'Snagajob': 'bg-orange-500',
+                    'USAJOBS': 'bg-blue-900',
+                    'Handshake': 'bg-red-500',
+                    'Wellfound': 'bg-gray-800',
+                    'HiringCafe': 'bg-yellow-600'
+                };
+                let sourceColor = colors[job.source] || 'bg-gray-600';
+
+                let scoreColor = 'bg-green-100 text-green-800';
+                if (job.match_score < 70) scoreColor = 'bg-yellow-100 text-yellow-800';
+                if (job.match_score < 50) scoreColor = 'bg-red-100 text-red-800';
+
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-lg shadow border p-5 flex flex-col hover:shadow-md transition-shadow relative overflow-hidden';
+                card.innerHTML = `
+                    <div class="absolute top-0 right-0 ${sourceColor} text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">
+                        ${job.source}
+                    </div>
+                    <div class="flex justify-between items-start mb-2 mt-3">
+                        <div class="flex flex-col space-y-1">
+                            <span class="inline-block text-blue-600 font-semibold text-[11px] bg-blue-50 px-2 py-1 rounded w-fit mb-1 border border-blue-200 uppercase tracking-wide">
+                                #${job.search_keyword}
+                            </span>
+                            <div>
+                                ${badgeHtml}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadge} mb-2">
+                                    ${job.status}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500 mr-14 whitespace-nowrap"><i class="fa-regular fa-clock"></i> ${job.posted_date}</div>
+                    </div>
+                    <div class="flex items-center mb-1 space-x-2">
+                        <h3 class="text-lg font-bold text-gray-900 leading-tight"><a href="${job.url}" target="_blank" class="hover:text-blue-600">${job.title}</a></h3>
+                    </div>
+                    <div class="mb-3">
+                        <span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold ${scoreColor} rounded">
+                            <i class="fa-solid fa-bullseye mr-1"></i> ${job.match_score}% Match
+                        </span>
+                    </div>
+                    <div class="text-sm font-medium text-blue-600 mb-1">${job.company}</div>
+                    <div class="text-sm text-gray-600 mb-3"><i class="fa-solid fa-location-dot mr-1"></i> ${job.location}</div>
+                    <p class="text-sm text-gray-700 line-clamp-3 mb-4 flex-1">${job.description}</p>
+                    
+                    <div class="flex justify-end space-x-2 border-t pt-3 mt-auto">
+                        ${job.status !== 'Applied' ? `<button onclick="updateStatus(${job.id}, 'Applied')" class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">Apply</button>` : ''}
+                        ${job.status !== 'Dismissed' ? `<button onclick="updateStatus(${job.id}, 'Dismissed')" class="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300">Dismiss</button>` : ''}
+                        ${job.status !== 'New' ? `<button onclick="updateStatus(${job.id}, 'New')" class="px-3 py-1 border border-gray-300 text-gray-700 text-sm rounded hover:bg-gray-50">Reset</button>` : ''}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function updateStatus(jobId, status) {
+            await fetch(`${API_URL}/jobs/${jobId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            loadJobs(); // Refresh the list
+        }
+
+        // Boot
+        init();
+    </script>
+</body>
+</html>
