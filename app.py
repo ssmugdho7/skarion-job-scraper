@@ -5,18 +5,10 @@ import os
 import json
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins="*", methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Content-Type"])
 
-database_url = os.environ.get('DATABASE_URL', 'sqlite:///jobs.db')
-if database_url.startswith('postgres://'):
-    database_url = database_url.replace('postgres://', 'postgresql://', 1)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///jobs.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'pool_pre_ping': True,
-    'pool_recycle': 300,
-}
 
 db.init_app(app)
 
@@ -84,10 +76,6 @@ with app.app_context():
 @app.route('/')
 def serve_index():
     return send_from_directory('.', 'index.html')
-
-@app.route('/health')
-def health():
-    return jsonify({'status': 'ok'})
 
 @app.route('/api/candidates', methods=['GET'])
 def get_candidates():
@@ -158,4 +146,4 @@ def update_job_status(job_id):
     return jsonify({'error': 'Invalid status'}), 400
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(debug=True, port=5000)
