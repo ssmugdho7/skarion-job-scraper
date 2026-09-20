@@ -73,6 +73,10 @@ with app.app_context():
     db.create_all()
     seed_data()
 
+@app.route('/health')
+def health():
+    return jsonify({'status': 'ok'})
+
 @app.route('/')
 def serve_index():
     return send_from_directory('.', 'index.html')
