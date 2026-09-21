@@ -95,7 +95,7 @@ def scrape_linkedin_jobs(query, candidate):
         location = location_tag.get_text(strip=True) if location_tag else "United States"
         posted_date = date_tag.get_text(strip=True) if date_tag else "Recent"
         description = f"{title} at {company}. Matched search: {query}."
-        if is_senior_role(description, title) or requires_us_citizen(description):
+        if is_senior_role(description, title):
             continue
         jobs.append({
             "candidate_id": candidate.id,
@@ -105,7 +105,7 @@ def scrape_linkedin_jobs(query, candidate):
             "description": description,
             "url": candidate_scoped_url(link_tag["href"].split("?")[0], candidate.id, index),
             "posted_date": posted_date,
-            "is_us_citizen_required": False,
+            "is_us_citizen_required": requires_us_citizen(description),
             "source": "LinkedIn",
             "match_score": keyword_score(candidate, query, description),
             "search_keyword": query,
@@ -127,7 +127,7 @@ def generate_fallback_jobs(platform, query, candidate):
         company = random.choice(["Apex Systems", "Insight Global", "Actalent", "TEKsystems", "Randstad Digital", "Kforce"])
         location = random.choice(["Remote", "New York, NY", "Austin, TX", "Seattle, WA", "Chicago, IL", "San Francisco, CA", "Dallas, TX"])
         description = f"Junior to mid-level {query} opening. Skills include {query}, documentation, QA/QC, and cross-functional coordination. 0-6 years experience preferred."
-        if is_senior_role(description, title) or requires_us_citizen(description):
+        if is_senior_role(description, title):
             continue
         jobs.append({
             "candidate_id": candidate.id,
@@ -137,7 +137,7 @@ def generate_fallback_jobs(platform, query, candidate):
             "description": description,
             "url": stable_job_url(platform, query, index, candidate.id),
             "posted_date": f"{random.randint(1, 23)} hours ago",
-            "is_us_citizen_required": False,
+            "is_us_citizen_required": requires_us_citizen(description),
             "source": platform,
             "match_score": keyword_score(candidate, query, description),
             "search_keyword": query,
@@ -164,8 +164,6 @@ def run_scraper():
                     jobs = scrape_platform_jobs(query, candidate, platform)
                     added = 0
                     for job_data in jobs:
-                        if requires_us_citizen(job_data.get("description", "")):
-                            continue
                         exists = Job.query.filter_by(url=job_data["url"]).first()
                         if not exists:
                             db.session.add(Job(**job_data))

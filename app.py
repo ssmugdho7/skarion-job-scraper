@@ -100,7 +100,6 @@ def get_jobs():
     if status:
         query = query.filter_by(status=status)
     query = query.filter(Job.source.in_(['LinkedIn', 'Dice']))
-    query = query.filter(Job.is_us_citizen_required.is_(False))
         
     jobs = query.all()
     
@@ -116,11 +115,6 @@ def get_jobs():
                         continue
             except ValueError:
                 pass
-        description_text = (job.description or '').lower()
-        if any(term in description_text for term in ['us citizen', 'u.s. citizen', 'citizenship required', 'citizen for clearance']):
-            continue
-                
-                
         # State filter
         if state_filter and state_filter.lower() not in (job.location or '').lower():
             continue

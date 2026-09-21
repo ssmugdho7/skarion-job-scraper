@@ -49,5 +49,6 @@ class Job(db.Model):
             'match_score': self.match_score,
             'posted_date': self.posted_date,
             'status': self.status,
+            'is_us_citizen_required': self.is_us_citizen_required,
             'created_at': self.created_at.isoformat()
         }
