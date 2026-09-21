@@ -94,20 +94,32 @@ def scrape_linkedin_jobs(query, candidate):
         company = company_tag.get_text(strip=True) if company_tag else "Unknown"
         location = location_tag.get_text(strip=True) if location_tag else "United States"
         posted_date = date_tag.get_text(strip=True) if date_tag else "Recent"
-        description = f"{title} at {company}. Matched search: {query}."
-        if is_senior_role(description, title):
+        
+        # Get the actual job URL
+        job_url = link_tag["href"].split("?")[0]
+        if not job_url.startswith("http"):
+            job_url = f"https://www.linkedin.com{job_url}"
+        
+        # Fetch full job description
+        full_description = get_job_description("LinkedIn", job_url)
+        
+        if is_senior_role(full_description, title):
             continue
+        
+        # Small delay to avoid rate limiting
+        time.sleep(0.5)
+            
         jobs.append({
             "candidate_id": candidate.id,
             "title": title,
             "company": company,
             "location": location,
-            "description": description,
-            "url": candidate_scoped_url(link_tag["href"].split("?")[0], candidate.id, index),
+            "description": full_description,
+            "url": candidate_scoped_url(job_url, candidate.id, index),
             "posted_date": posted_date,
-            "is_us_citizen_required": requires_us_citizen(description),
+            "is_us_citizen_required": requires_us_citizen(full_description),
             "source": "LinkedIn",
-            "match_score": keyword_score(candidate, query, description),
+            "match_score": keyword_score(candidate, query, full_description),
             "search_keyword": query,
         })
 
@@ -117,6 +129,62 @@ def scrape_linkedin_jobs(query, candidate):
 
 
 def scrape_dice_jobs(query, candidate):
+    url = platform_search_url("Dice", query)
+    jobs = []
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser") if response.ok else None
+        # Dice job cards - need to check actual Dice HTML structure
+        cards = soup.find_all("div", class_="card")[:12] if soup else []
+        
+        for index, card in enumerate(cards):
+            title_tag = card.find("h3") or card.find("a", class_="card-title")
+            company_tag = card.find("span", class_="company") or card.find("span", class_="employer")
+            location_tag = card.find("span", class_="location") or card.find("div", class_="location")
+            link_tag = card.find("a", href=True)
+            date_tag = card.find("span", class_="date") or card.find("time")
+            
+            if not title_tag or not link_tag:
+                continue
+                
+            title = title_tag.get_text(strip=True)
+            company = company_tag.get_text(strip=True) if company_tag else "Unknown"
+            location = location_tag.get_text(strip=True) if location_tag else "United States"
+            posted_date = date_tag.get_text(strip=True) if date_tag else "Recent"
+            
+            # Get the actual job URL
+            job_url = link_tag["href"]
+            if not job_url.startswith("http"):
+                job_url = f"https://www.dice.com{job_url}"
+            
+            # Try to get the full job description
+            full_description = get_job_description("Dice", job_url)
+            
+            if is_senior_role(full_description, title):
+                continue
+            
+            # Small delay to avoid rate limiting
+            time.sleep(0.5)
+                
+            jobs.append({
+                "candidate_id": candidate.id,
+                "title": title,
+                "company": company,
+                "location": location,
+                "description": full_description,
+                "url": candidate_scoped_url(job_url, candidate.id, index),
+                "posted_date": posted_date,
+                "is_us_citizen_required": requires_us_citizen(full_description),
+                "source": "Dice",
+                "match_score": keyword_score(candidate, query, full_description),
+                "search_keyword": query,
+            })
+            
+    except Exception as exc:
+        print(f"Dice fetch failed for {query}: {exc}")
+    
+    if jobs:
+        return jobs
     return generate_fallback_jobs("Dice", query, candidate)
 
 
@@ -129,13 +197,16 @@ def generate_fallback_jobs(platform, query, candidate):
         description = f"Junior to mid-level {query} opening. Skills include {query}, documentation, QA/QC, and cross-functional coordination. 0-6 years experience preferred."
         if is_senior_role(description, title):
             continue
+        # Create unique URL for each fallback job
+        base_url = platform_search_url(platform, query)
+        unique_url = f"{base_url}#job-{candidate.id}-{index}-{hashlib.md5(f'{platform}-{query}-{candidate.id}-{index}'.encode()).hexdigest()[:8]}"
         jobs.append({
             "candidate_id": candidate.id,
             "title": title,
             "company": company,
             "location": location,
             "description": description,
-            "url": stable_job_url(platform, query, index, candidate.id),
+            "url": unique_url,
             "posted_date": f"{random.randint(1, 23)} hours ago",
             "is_us_citizen_required": requires_us_citizen(description),
             "source": platform,
@@ -143,6 +214,41 @@ def generate_fallback_jobs(platform, query, candidate):
             "search_keyword": query,
         })
     return jobs
+
+
+def get_job_description(platform, job_url):
+    """Fetch full job description from the job detail page"""
+    try:
+        response = requests.get(job_url, headers=HEADERS, timeout=15)
+        if not response.ok:
+            return f"Job at {job_url}"
+        
+        soup = BeautifulSoup(response.text, "html.parser")
+        
+        if platform == "LinkedIn":
+            # Try to find description in LinkedIn job page
+            desc_div = soup.find("div", class_="show-more-less-html") or \
+                       soup.find("div", class_="job-description") or \
+                       soup.find("div", {"data-test-id": "job-description"})
+            if desc_div:
+                return desc_div.get_text(" ", strip=True)[:2000]  # Limit to 2000 chars
+        
+        elif platform == "Dice":
+            # Try to find description in Dice job page
+            desc_div = soup.find("div", class_="job-desc") or \
+                       soup.find("div", class_="description") or \
+                       soup.find("div", itemprop="description")
+            if desc_div:
+                return desc_div.get_text(" ", strip=True)[:2000]
+        
+        # Fallback: return a basic description
+        title = soup.find("h1") or soup.find("h2") or soup.find("title")
+        title_text = title.get_text(strip=True) if title else "Job"
+        return f"{title_text}. Full description available at {job_url}"
+        
+    except Exception as exc:
+        print(f"Failed to fetch description for {job_url}: {exc}")
+        return f"Job at {job_url}"
 
 
 def scrape_platform_jobs(query, candidate, platform):
