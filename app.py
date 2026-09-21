@@ -32,25 +32,20 @@ def seed_data():
             skills="GIS Software & Tools: ArcGIS Pro, AutoCAD Map 3D... Outside Plant Engineering: FTTx... Endpoint Management...",
             search_queries='["GIS Analyst", "OSP Fiber Engineer", "IT Support Engineer"]'
         )
-        akib = Candidate(
-            name="Akib Zaman",
-            skills="CAD Drafting: AutoCAD 2D... OSP, Fiber & GIS Design: FTTH/FTTx...",
-            search_queries='["CAD Drafter", "OSP Engineer"]'
-        )
         ahmed = Candidate(
             name="Ahmed",
             skills="GIS Software & Platforms: ArcGIS Pro, ArcGIS Online, QGIS, Cityworks, Mobile GIS Applications. Spatial Data Management: Geodatabases, Spatial Databases, Data Editing, Feature Digitization, Attribute Management, Data Validation, Data Maintenance, Asset Data Management. Mapping & Spatial Analysis: Cartographic Design, Map Production, Thematic Mapping, Spatial Queries, Geoprocessing, Spatial Analysis, Data Visualization, Infrastructure & Land-Use Mapping. GIS Data & Formats: Shapefile, GeoJSON, KML, Vector Data, Spatial Data Conversion, Data Preparation, Database Structures. QA/QC & Field Data: GIS QA/QC, Spatial Data Validation, Attribute Verification, Field Data Collection, GPS-Based Data Capture, Infrastructure Documentation, Data Discrepancy Resolution. Documentation & Collaboration: Metadata Management, SOP Documentation, Work Orders, Asset Tracking, Technical Reporting, Engineering Coordination, Stakeholder Support (GIS). OSP Fiber Design & Engineering: FTTx, XGS-PON, Fiber Optic Network Design, Aerial & Underground Design, Pole Line Design, Conduit Pathways, Duct Bank Layouts, Handhole Placement, Fiber Distribution Layouts, Route Design, Constructability Reviews, Field Surveys. GIS & Mapping Tools: 3GIS, GIS Mapping, Google Earth, Geo-Referenced Data, Spatial Data Review, Infrastructure Mapping, Route Analysis, Field Data Integration. Documentation, QA/QC & Project Coordination: HLD/LLD Documentation, Splice Matrices, As-Built Drawings, Redline Updates, Engineering Packages, Submittal Packages, BOM/BOQ Development, Material Estimation, Fiber Loss Calculations, QA/QC, Design Validation, NESC, DOT/Utility Standards, ANSI/ISO Drafting Standards, Permit Coordination, Engineering Coordination, Construction Support, Microsoft Office, Microsoft Visio (OSP). CAD & BIM Software: AutoCAD, Revit, 2D Drafting, 3D Modeling, BIM Workflows. Technical Drafting & Documentation: Construction Drawings, Floor Plans, Elevations, Cross-Sections, Detail Drawings, Shop Drawings, Permit Drawings, As-Built Drawings, Construction Documents, Permit Documentation, Redline Markups, Material Takeoffs, Submittal Packages, Project Closeout Documentation. CAD Management & QA/QC: Layers, Xrefs, Blocks, Title Blocks, Sheet Sets, Dimensioning, Annotation, Scaling, Plotting, Revision Tracking, Drawing QA/QC, Dimensional Accuracy, CAD Standards, Document Control, ANSI/ISO Drafting Standards, Building Code Compliance. Coordination & Project Support: Engineering Coordination, Architectural Coordination, Design Reviews, Client Revisions, Contractor Coordination, Multidisciplinary Collaboration (CAD)",
             search_queries='["GIS Specialist", "Fiber Designer", "OSP Engineer", "AutoCAD Drafter"]'
         )
+        akib = Candidate(
+            name="Akib Zaman",
+            skills="CAD Drafting: AutoCAD 2D... OSP, Fiber & GIS Design: FTTH/FTTx...",
+            search_queries='["CAD Drafter", "OSP Engineer"]'
+        )
         geetha = Candidate(
             name="Geetha Ragiphani",
             skills="Infrastructure Operations & Facilities: Data center operations... Server Hardware, Linux & OOB...",
             search_queries='["Data Center Technician", "Data Center Analyst"]'
-        )
-        rija = Candidate(
-            name="Rija Tovi",
-            skills="OSP / FTTx Delivery: Distribution-split FTTx... Fiber Design / Documentation: AutoCAD, GIS, ArcGIS...",
-            search_queries='["OSP Engineer", "Fiber Broadband Engineer"]'
         )
         mahbubul = Candidate(
             name="Mahbubul Alam",
@@ -72,8 +67,13 @@ def seed_data():
             skills="Financial Analysis & Planning... Accounting & Financial Reporting... Operational Accounting...",
             search_queries='["Financial Analyst", "Staff Accountant"]'
         )
+        rija = Candidate(
+            name="Rija Tovi",
+            skills="OSP / FTTx Delivery: Distribution-split FTTx... Fiber Design / Documentation: AutoCAD, GIS, ArcGIS...",
+            search_queries='["OSP Engineer", "Fiber Broadband Engineer"]'
+        )
         
-        db.session.add_all([abrar, adnan, akib, ahmed, geetha, rija, mahbubul, najiur, nujhat, rayda])
+        db.session.add_all([abrar, adnan, ahmed, akib, geetha, mahbubul, najiur, nujhat, rayda, rija])
         db.session.commit()
         print("Database seeded with all candidates.")
 

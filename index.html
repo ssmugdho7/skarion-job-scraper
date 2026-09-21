@@ -72,7 +72,11 @@
 
         async function loadCandidates() {
             const res = await fetch(`${API_URL}/candidates`);
-            const candidates = await res.json();
+            let candidates = await res.json();
+            
+            // Sort candidates alphabetically by name
+            candidates.sort((a, b) => a.name.localeCompare(b.name));
+            
             const list = document.getElementById('candidate-list');
             list.innerHTML = '';
             
@@ -89,6 +93,7 @@
             });
 
             if (candidates.length > 0) {
+                // Select the first candidate alphabetically
                 selectCandidate(candidates[0].id, candidates[0].name);
             }
         }
