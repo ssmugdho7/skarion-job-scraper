@@ -115,7 +115,7 @@ def scrape_linkedin_jobs(query, candidate):
             "company": company,
             "location": location,
             "description": full_description,
-            "url": candidate_scoped_url(job_url, candidate.id, index),
+            "url": job_url,  # Use actual LinkedIn job URL without hash modification
             "posted_date": posted_date,
             "is_us_citizen_required": requires_us_citizen(full_description),
             "source": "LinkedIn",
@@ -172,7 +172,7 @@ def scrape_dice_jobs(query, candidate):
                 "company": company,
                 "location": location,
                 "description": full_description,
-                "url": candidate_scoped_url(job_url, candidate.id, index),
+                "url": job_url,  # Use actual Dice job URL (e.g., https://www.dice.com/job-detail/ff879a6f-d096-4dc2-9c28-8a53508f683b)
                 "posted_date": posted_date,
                 "is_us_citizen_required": requires_us_citizen(full_description),
                 "source": "Dice",
