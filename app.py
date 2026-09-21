@@ -113,14 +113,19 @@ def get_jobs():
     
     filtered_jobs = []
     for job in jobs:
-        # Date filter mock logic
+        # Date filter - filter out old jobs
         if date_filter:
             try:
                 days = int(date_filter)
-                if 'hour' not in job.posted_date and 'minute' not in job.posted_date:
-                    job_days_str = ''.join(filter(str.isdigit, job.posted_date))
+                posted = (job.posted_date or '').lower()
+                # Jobs with "hour" or "minute" are recent enough - keep them
+                if 'hour' in posted or 'minute' in posted or 'today' in posted or 'recent' in posted:
+                    pass  # Keep recent jobs
+                else:
+                    # Extract day number from "X days ago"
+                    job_days_str = ''.join(filter(str.isdigit, posted))
                     if job_days_str and int(job_days_str) > days:
-                        continue
+                        continue  # Skip jobs older than filter
             except ValueError:
                 pass
         # State filter

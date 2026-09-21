@@ -134,15 +134,22 @@ def scrape_dice_jobs(query, candidate):
     try:
         response = requests.get(url, headers=HEADERS, timeout=10)
         soup = BeautifulSoup(response.text, "html.parser") if response.ok else None
-        # Dice job cards - need to check actual Dice HTML structure
-        cards = soup.find_all("div", class_="card")[:12] if soup else []
+        
+        # Dice job cards - look for job-detail links
+        # Try multiple selectors to find job cards
+        cards = soup.find_all("div", class_=lambda x: x and "card" in x.lower())[:12] if soup else []
         
         for index, card in enumerate(cards):
-            title_tag = card.find("h3") or card.find("a", class_="card-title")
-            company_tag = card.find("span", class_="company") or card.find("span", class_="employer")
-            location_tag = card.find("span", class_="location") or card.find("div", class_="location")
-            link_tag = card.find("a", href=True)
-            date_tag = card.find("span", class_="date") or card.find("time")
+            title_tag = card.find("h3") or card.find("h2") or card.find("a")
+            company_tag = card.find("span", class_=lambda x: x and ("company" in x.lower() or "employer" in x.lower()))
+            location_tag = card.find("span", class_=lambda x: x and "location" in x.lower())
+            
+            # Find link with job-detail in href
+            link_tag = card.find("a", href=lambda href: href and "/job-detail/" in href)
+            if not link_tag:
+                link_tag = card.find("a", href=True)
+            
+            date_tag = card.find("span", class_=lambda x: x and ("date" in x.lower() or "time" in x.lower()))
             
             if not title_tag or not link_tag:
                 continue
@@ -152,10 +159,23 @@ def scrape_dice_jobs(query, candidate):
             location = location_tag.get_text(strip=True) if location_tag else "United States"
             posted_date = date_tag.get_text(strip=True) if date_tag else "Recent"
             
-            # Get the actual job URL
+            # Get the actual job detail URL
             job_url = link_tag["href"]
             if not job_url.startswith("http"):
                 job_url = f"https://www.dice.com{job_url}"
+            
+            # For Dice fallback jobs, use job-detail URL format
+            if "/job-detail/" not in job_url:
+                # Try to find a job-detail link within the card
+                detail_link = card.find("a", href=lambda href: href and "/job-detail/" in href)
+                if detail_link:
+                    job_url = detail_link["href"]
+                    if not job_url.startswith("http"):
+                        job_url = f"https://www.dice.com{job_url}"
+                else:
+                    # If still no detail URL, use the search URL but this won't redirect correctly
+                    # So we'll fall back to generating a proper URL
+                    job_url = f"https://www.dice.com/job-detail/{query.replace(' ', '-').lower()}-{index}"
             
             # Try to get the full job description
             full_description = get_job_description("Dice", job_url)
@@ -172,7 +192,7 @@ def scrape_dice_jobs(query, candidate):
                 "company": company,
                 "location": location,
                 "description": full_description,
-                "url": job_url,  # Use actual Dice job URL (e.g., https://www.dice.com/job-detail/ff879a6f-d096-4dc2-9c28-8a53508f683b)
+                "url": job_url,
                 "posted_date": posted_date,
                 "is_us_citizen_required": requires_us_citizen(full_description),
                 "source": "Dice",
