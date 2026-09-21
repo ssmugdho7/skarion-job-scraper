@@ -185,7 +185,8 @@
                 if (job.match_score < 50) scoreColor = 'bg-red-100 text-red-800';
 
                 const card = document.createElement('div');
-                card.className = 'bg-white rounded-lg shadow border p-5 flex flex-col hover:shadow-md transition-shadow relative overflow-hidden';
+                const usCitizenClass = job.is_us_citizen_required ? 'border-red-500 border-2' : 'border-gray-200';
+                card.className = `bg-white rounded-lg shadow ${usCitizenClass} p-5 flex flex-col hover:shadow-md transition-shadow relative overflow-hidden`;
                 card.innerHTML = `
                     <div class="absolute top-0 right-0 ${sourceColor} text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">
                         ${job.source}
@@ -206,6 +207,7 @@
                     </div>
                     <div class="flex items-center mb-1 space-x-2">
                         <h3 class="text-lg font-bold text-gray-900 leading-tight"><a href="${job.url}" target="_blank" class="hover:text-blue-600">${job.title}</a></h3>
+                        ${job.is_us_citizen_required ? '<i class="fa-solid fa-ban text-red-500 ml-2"></i>' : ''}
                     </div>
                     <div class="mb-3">
                         <span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold ${scoreColor} rounded">

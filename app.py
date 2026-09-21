@@ -107,8 +107,19 @@ def get_jobs():
         query = query.filter_by(candidate_id=candidate_id)
     if status:
         query = query.filter_by(status=status)
-    query = query.filter(Job.source.in_(['LinkedIn', 'Dice']))
-        
+    
+    # IMPORTANT FILTERS:
+    # 1. Only USA/United States/Remote jobs
+    query = query.filter(
+        Job.location.ilike('%USA%') | 
+        Job.location.ilike('%United States%') |
+        Job.location.ilike('%Remote%') |
+        Job.location.ilike('%us%')
+    )
+    
+    # 2. Only jobs with score > 60
+    query = query.filter(Job.match_score > 60)
+    
     jobs = query.all()
     
     filtered_jobs = []
@@ -134,9 +145,21 @@ def get_jobs():
             
         filtered_jobs.append(job.to_dict())
 
-    # Apply Sorting
-    if sort_by == 'score_desc':
-        filtered_jobs.sort(key=lambda x: x['match_score'], reverse=True)
+    # Apply Sorting - DEFAULT: LinkedIn first (by score), then other sources
+    if sort_by == 'score_desc' or sort_by == 'linkedin_first':
+        # LinkedIn jobs first, sorted by score desc, then others by score desc
+        linkedin_jobs = [j for j in filtered_jobs if j.get('source') == 'LinkedIn']
+        other_jobs = [j for j in filtered_jobs if j.get('source') != 'LinkedIn']
+        
+        # Preferred source order for non-LinkedIn
+        source_priority = ['ZipRecruiter', 'Glassdoor', 'SimplyHired', 'Dice', 'FlexJobs', 'Snagajob', 'USAJobs', 'Handshake']
+        other_jobs.sort(key=lambda x: (
+            source_priority.index(x.get('source', '')) if x.get('source') in source_priority else len(source_priority),
+            -x.get('match_score', 0)
+        ))
+        
+        linkedin_jobs.sort(key=lambda x: x.get('match_score', 0), reverse=True)
+        filtered_jobs = linkedin_jobs + other_jobs
     elif sort_by == 'score_asc':
         filtered_jobs.sort(key=lambda x: x['match_score'])
     elif sort_by == 'date_desc':
